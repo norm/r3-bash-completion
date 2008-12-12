@@ -1,0 +1,126 @@
+# r3 completion routine -- Mark Norman Francis <norm@cackhanded.net>
+# -*- Mode: Bash; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+
+_r3() {
+    COMPREPLY=()
+    local   opts 
+    local   current="${COMP_WORDS[COMP_CWORD]}"
+    local   dimension=''
+    
+    # replace args like "-t" with just "t" to make it a viable variable name
+    local    first=$( echo ${COMP_WORDS[1]} | sed -e 's/^-//' )
+    local   second=$( echo ${COMP_WORDS[2]} | sed -e 's/^-//' )
+    local    third=$( echo ${COMP_WORDS[3]} | sed -e 's/^-//' )
+    local   fourth=$( echo ${COMP_WORDS[4]} | sed -e 's/^-//' )
+    local    fifth=$( echo ${COMP_WORDS[5]} | sed -e 's/^-//' )
+    
+    # TODO
+    #   *   test dimension attributes
+    #   *   parse the generation targets
+    #   *   test import
+    #   *   generate expansion should include targets
+    #   *   finish target
+    #   *   finish template
+    #   *   finish translation
+    #   *   finish var
+    
+    local r3="  about       dimension   generate    inheritance setup
+                target      template    translation var         version"
+    local dimension_x="
+                attribute   create      delete      parent      list"
+    local dimension_x_attribute="
+                create      destroy     list        set         unset"
+    local dimension_x_list="-t"
+    local dimension_x_list_t="
+                template    translation"
+    local dimension_x_parent_x="
+                set         unset"
+    local generate="
+                -D          -T          -a          -l
+                -n          -o          -v"
+    local inheritance="
+                save        load        list"
+    local inheritance_list="
+                page        template    translation var"
+    local setup="
+                dimension   import      installdb   installgui
+                load        save        setuphome   upgrade"
+    local setup_dimension="
+                create      remove      rename      list        clear"
+    local target="
+                create      delete      info        list        load
+                save        searchpath  template    templates"
+    local template="
+                create      delete      edit        load        move 
+                promote     save        searchpath  specialise  targets"
+    local translation="
+                clear       delete      list        merge       move 
+                promote     reference   save        searchpath  set 
+                specialise  templates   view"
+    local var="
+                clear       delete      list        merge       move 
+                promote     save        searchpath  set         specialise 
+                view"
+    
+    # create the default expansions
+    case "$COMP_CWORD" in
+        1)  var="r3";;
+        2)  var="${first}";;
+        3)  var="${first}_${second}";;
+        4)  var="${first}_${second}_${third}";;
+        5)  var="${first}_${second}_${third}_${fourth}";;
+        6)  var="${first}_${second}_${third}_${fourth}_${fifth}";;
+        *)  echo ''; echo "ERROR?";;
+    esac
+    
+    # over-ride ${var} where an argument is dynamic
+    case "$var" in 
+        dimension*)
+            dimension=$( echo $var | awk -F_ '{ print $2 }' )
+            var=$( echo $var | sed -e 's/^dimension_[^_]*/dimension_x/' )
+            
+            case "$var" in 
+                dimension_x_parent*)
+                    local cmd='dimension_x_parent'
+                    var=$(   echo $var \
+                           | sed -e "s/^${cmd}_[^_]*/${cmd}_x/" )
+                ;;
+            esac
+        ;;
+        generate*)
+            var='generate'
+        ;;
+    esac
+    
+    opts="${!var}"
+    
+    # run-time expansions that replace ${opts}
+    case "$var" in
+        dimension)
+            opts=$( r3 setup dimension list | awk '{ print $2 }' )
+        ;;
+        dimension_x_create_p*|\
+        dimension_*_delete*|\
+        dimension_x_parent|\
+        dimension_x_parent_x_set|\
+        dimension_x_parent_x_unset)
+            opts=$( r3 dimension ${dimension} list )
+        ;;
+    esac
+    
+    # setup the completions
+    case "$var" in
+        setup_load|\
+        setup_save|\
+        inheritance_load|\
+        inheritance_save)
+            COMPREPLY=( $(compgen -f ${current}) )
+        ;;
+        *)
+            COMPREPLY=( $(compgen -W "${opts}" -- ${current} ) )
+        ;;
+    esac
+    
+    return 0
+}
+complete -F _r3 r3
